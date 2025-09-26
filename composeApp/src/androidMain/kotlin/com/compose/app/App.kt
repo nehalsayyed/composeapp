@@ -6,7 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,7 +55,8 @@ fun AnimatedProgressDialog(showDialog: Boolean, onDismiss: () -> Unit) {
 fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
     NavigationBar {
         NavigationBarItem(
-            icon = { Icon(Icons.Default.Home, contentDescription label = { Text("Home") },
+            icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+            label = { Text("Home") },
             selected = selectedTab == 0,
             onClick = { onTabSelected(0) }
         )
@@ -100,7 +103,6 @@ fun App() {
             drawerState = drawerState,
             drawerContent = {
                 SideDrawerContent { item ->
-                    // Handle drawer item click
                     println("Clicked: $item")
                 }
             }
