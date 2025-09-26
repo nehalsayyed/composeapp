@@ -3,6 +3,7 @@ package com.compose.app
 import androidx.compose.animation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -13,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -51,8 +53,7 @@ fun AnimatedProgressDialog(showDialog: Boolean, onDismiss: () -> Unit) {
 fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
     NavigationBar {
         NavigationBarItem(
-            icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-            label = { Text("Home") },
+            icon = { Icon(Icons.Default.Home, contentDescription label = { Text("Home") },
             selected = selectedTab == 0,
             onClick = { onTabSelected(0) }
         )
@@ -76,13 +77,15 @@ fun SideDrawerContent(onItemClick: (String) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 @Preview
 fun App() {
     MaterialTheme {
+        val coroutineScope = rememberCoroutineScope()
         var showContent by remember { mutableStateOf(false) }
         var showDialog by remember { mutableStateOf(false) }
-        var drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         var selectedTab by remember { mutableStateOf(0) }
 
         LaunchedEffect(showContent) {
@@ -95,7 +98,12 @@ fun App() {
 
         ModalNavigationDrawer(
             drawerState = drawerState,
-            drawerContent = { SideDrawerContent { /* handle drawer item click */ } }
+            drawerContent = {
+                SideDrawerContent { item ->
+                    // Handle drawer item click
+                    println("Clicked: $item")
+                }
+            }
         ) {
             Scaffold(
                 bottomBar = {
@@ -107,7 +115,11 @@ fun App() {
                     TopAppBar(
                         title = { Text("Compose App") },
                         navigationIcon = {
-                            IconButton(onClick = { drawerState.open() }) {
+                            IconButton(onClick = {
+                                coroutineScope.launch {
+                                    drawerState.open()
+                                }
+                            }) {
                                 Icon(Icons.Default.Menu, contentDescription = "Menu")
                             }
                         }
