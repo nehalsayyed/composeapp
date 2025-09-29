@@ -2,7 +2,7 @@ package com.compose.app
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import com.compose.BottomNavItem
+import com.compose.app.BottomNavItem
 
 object Constants {
     val BottomNavItems = listOf(
