@@ -17,7 +17,6 @@ import androidx.navigation.compose.rememberNavController
 import com.compose.app.HomeScreen
 import com.compose.app.ProfileScreen
 import com.compose.app.SearchScreen
-import com.compose.app.DemoTheme
 import com.compose.app.Constants
 
 class MainActivity : ComponentActivity() {
