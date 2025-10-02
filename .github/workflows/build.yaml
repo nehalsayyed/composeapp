@@ -2,8 +2,8 @@ name: Build KMP Android APK
 
 on:
   push:
-    branches:
-      - main  # or your desired branch
+    paths:
+      - build.yaml  # or your desired branch
 
 jobs:
   build:
