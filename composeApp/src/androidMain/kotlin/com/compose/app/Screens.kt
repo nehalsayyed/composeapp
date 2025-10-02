@@ -1,3 +1,7 @@
+
+
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.compose.app
 
 import androidx.compose.foundation.background
@@ -12,6 +16,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,6 +25,8 @@ import androidx.compose.ui.graphics.Color
 
 @Composable
 fun HomeScreen() {
+    val tooltipState = rememberTooltipState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -27,6 +35,8 @@ fun HomeScreen() {
         verticalArrangement = Arrangement.Center
     ) {
         TooltipBox(
+            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+            state = tooltipState,
             tooltip = {
                 PlainTooltip { Text("Go to Home") }
             }
@@ -43,6 +53,8 @@ fun HomeScreen() {
 
 @Composable
 fun SearchScreen() {
+    val tooltipState = rememberTooltipState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -51,6 +63,8 @@ fun SearchScreen() {
         verticalArrangement = Arrangement.Center
     ) {
         TooltipBox(
+            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+            state = tooltipState,
             tooltip = {
                 PlainTooltip { Text("Search content") }
             }
@@ -67,6 +81,8 @@ fun SearchScreen() {
 
 @Composable
 fun ProfileScreen() {
+    val tooltipState = rememberTooltipState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -75,6 +91,8 @@ fun ProfileScreen() {
         verticalArrangement = Arrangement.Center
     ) {
         TooltipBox(
+            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+            state = tooltipState,
             tooltip = {
                 PlainTooltip { Text("View your profile") }
             }
