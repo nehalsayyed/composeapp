@@ -3,7 +3,7 @@ name: Build KMP Android APK
 on:
   push:
      paths:
-        - build.yaml  # or your desired branch
+        - MainActivity.kt  # or your desired branch
 
 jobs:
   build:
