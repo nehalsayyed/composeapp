@@ -5,7 +5,7 @@ on:
      branches:
         - main
      paths:
-        - '**MainActivity.kt'  # or your desired branch
+        - trigger.txt  # or your desired branch
 
 jobs:
   build:
