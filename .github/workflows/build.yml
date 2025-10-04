@@ -1,11 +1,7 @@
 name: Build KMP Android APK
 
 on:
-  push:
-     branches:
-        - main
-     paths:
-        - trigger.txt  # or your desired branch
+  workflow_dispatch: # or your desired branch
 
 jobs:
   build:
