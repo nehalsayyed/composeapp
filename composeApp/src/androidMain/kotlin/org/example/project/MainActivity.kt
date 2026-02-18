@@ -10,13 +10,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,9 +30,10 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
-    object Device : Screen("device", "Device", Icons.Default.Info)
-    object Memory : Screen("memory", "Memory", Icons.Default.Settings)
+// Simple route tracking
+sealed class Screen(val route: String, val title: String) {
+    object Device : Screen("device", "Device")
+    object Memory : Screen("memory", "Memory")
 }
 
 @Composable
@@ -49,7 +46,10 @@ fun MainScreen() {
             NavigationBar {
                 items.forEach { screen ->
                     NavigationBarItem(
-                        icon = { Icon(screen.icon, contentDescription = screen.title) },
+                        icon = { 
+                            // Using a simple Text emoji as an icon to avoid library errors
+                            Text(if (screen == Screen.Device) "📱" else "💾") 
+                        },
                         label = { Text(screen.title) },
                         selected = selectedScreen == screen,
                         onClick = { selectedScreen = screen }
@@ -120,7 +120,7 @@ fun MemoryTab() {
         InfoRow("JVM Free", "$freeHeap MB")
         
         Text(
-            text = "Note: Your DOTNET_GCHeapHardLimit logic may affect how the runtime allocates these pools.",
+            text = "Heap Limit Reference: $maxHeap MB",
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 20.dp),
             color = MaterialTheme.colorScheme.secondary
