@@ -5,6 +5,7 @@ on:
 
 jobs:
   test:
+    # Ubuntu now supports KVM for faster emulator performance
     runs-on: ubuntu-latest 
 
     steps:
@@ -40,22 +41,27 @@ jobs:
         force-avd-creation: true
         emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -memory 2048
         script: |
-          # 1. Install the APK we just built
-          adb install composeApp/build/outputs/apk/debug/composeApp-debug.apk
+          # 1. Install the APK
+          # wildcard ensures it finds the file regardless of the exact filename
+          adb install composeApp/build/outputs/apk/debug/*.apk
           
-          # 2. Run instrumented tests (allowing failure so we can still take the screenshot)
+          # 2. Run instrumented tests
+          # '|| true' ensures the workflow continues even if tests fail so we get the screenshot
           ./gradlew :composeApp:connectedDebugAndroidTest --no-daemon || true
           
-          # 3. Dynamically find the package name and launch the app
-          # This pulls the package name from the manifest and starts the main activity
-          PKG=$(aapt dump badging composeApp/build/outputs/apk/debug/composeApp-debug.apk | grep package | awk '{print $2}' | sed "s/name='//;s/'//")
+          # 3. Dynamically find the package name from the built APK
+          APK_PATH=$(ls composeApp/build/outputs/apk/debug/*.apk | head -n 1)
+          PKG=$(aapt dump badging "$APK_PATH" | grep package | awk '{print $2}' | sed "s/name='//;s/'//")
           echo "Launching package: $PKG"
-          adb shell monkey -p $PKG -c android.intent.category.LAUNCHER 1
           
-          # 4. Wait for the app to settle
-          sleep 8
+          # 4. Launch the app correctly
+          # The '1' (count) must be at the very end to avoid Error 255
+          adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1
           
-          # 5. Capture screenshot
+          # 5. Wait for UI to load (Compose apps can be slow on first boot)
+          sleep 10
+          
+          # 6. Capture screenshot and pull it to the runner
           adb shell screencap -p /sdcard/screen.png
           adb pull /sdcard/screen.png .
 
