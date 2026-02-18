@@ -5,9 +5,7 @@ on:
 
 jobs:
   test:
-    # Ubuntu now supports KVM for faster emulator performance
     runs-on: ubuntu-latest 
-
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
@@ -19,58 +17,39 @@ jobs:
         distribution: 'temurin'
         cache: 'gradle'
 
-    - name: Enable KVM group perms
+    - name: Enable KVM
       run: |
         echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
         sudo udevadm control --reload-rules
         sudo udevadm trigger --name-match=kvm
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - name: Build Debug APK
-      run: ./gradlew :composeApp:assembleDebug --no-daemon
-
-    - name: Run Emulator and Connected Tests
+    - name: Build and Test
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 29
         target: google_apis
         arch: x86_64
         profile: pixel
-        force-avd-creation: true
-        emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -memory 2048
         script: |
-          # 1. Install the APK
-          # wildcard ensures it finds the file regardless of the exact filename
-          adb install composeApp/build/outputs/apk/debug/*.apk
+          # 1. Build and install manually
+          chmod +x gradlew
+          ./gradlew :composeApp:installDebug --no-daemon
           
-          # 2. Run instrumented tests
-          # '|| true' ensures the workflow continues even if tests fail so we get the screenshot
-          ./gradlew :composeApp:connectedDebugAndroidTest --no-daemon || true
+          # 2. Launch the app (REPLACE 'com.your.package' WITH YOUR ACTUAL ID)
+          # We put the number 1 at the end so monkey doesn't cry.
+          adb shell monkey -p org.example.project -c android.intent.category.LAUNCHER 1
           
-          # 3. Dynamically find the package name from the built APK
-          APK_PATH=$(ls composeApp/build/outputs/apk/debug/*.apk | head -n 1)
-          PKG=$(aapt dump badging "$APK_PATH" | grep package | awk '{print $2}' | sed "s/name='//;s/'//")
-          echo "Launching package: $PKG"
-          
-          # 4. Launch the app correctly
-          # The '1' (count) must be at the very end to avoid Error 255
-          adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1
-          
-          # 5. Wait for UI to load (Compose apps can be slow on first boot)
+          # 3. Wait 10 seconds for it to actually show up
           sleep 10
           
-          # 6. Capture screenshot and pull it to the runner
+          # 4. Take the damn picture
           adb shell screencap -p /sdcard/screen.png
           adb pull /sdcard/screen.png .
 
-    - name: Upload Test Results & Screenshots
-      if: always() 
+    - name: Upload Screenshot
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: test-artifacts
-        path: |
-          composeApp/build/reports/androidTests/connected/
-          screen.png
-          
+        name: screenshot
+        path: screen.png
+        
