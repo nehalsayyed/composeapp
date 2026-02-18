@@ -1,11 +1,11 @@
-name: Android Build
+name: Android Build & Emulator Test
 
 on:
   workflow_dispatch: 
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  test:
+    runs-on: macos-latest 
 
     steps:
     - name: Checkout Code
@@ -21,13 +21,30 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build Debug APK
-      # Use --no-daemon in CI to save memory and prevent hanging processes
-      run: ./gradlew assembleDebug --no-daemon
+    - name: Run Emulator and Connected Tests
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 29
+        target: google_apis
+        arch: x86_64
+        profile: Pixel_6
+        # Increased memory for the emulator process to align with your high-RAM preference
+        emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -memory 2048
+        script: |
+          # 1. Run instrumented tests for the composeApp module
+          ./gradlew :composeApp:connectedDebugAndroidTest --no-daemon
+          
+          # 2. Capture a screenshot after tests finish
+          adb shell screencap -p /sdcard/screen.png
+          adb pull /sdcard/screen.png .
 
-    - name: Upload APK Artifact
+    - name: Upload Test Results & Screenshots
+      if: always() 
       uses: actions/upload-artifact@v4
       with:
-        name: debug-apk
-        path: app/build/outputs/apk/debug/app-debug.apk
-        
+        name: test-artifacts
+        path: |
+          # Path updated to match your composeApp module
+          composeApp/build/reports/androidTests/connected/
+          screen.png
+          
