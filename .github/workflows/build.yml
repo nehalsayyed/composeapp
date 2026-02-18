@@ -5,7 +5,8 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest 
+    # Now using Ubuntu with KVM support
+    runs-on: ubuntu-latest 
 
     steps:
     - name: Checkout Code
@@ -18,6 +19,13 @@ jobs:
         distribution: 'temurin'
         cache: 'gradle'
 
+    # This step is REQUIRED for KVM to work on Ubuntu runners
+    - name: Enable KVM group perms
+      run: |
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
+
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
@@ -27,8 +35,9 @@ jobs:
         api-level: 29
         target: google_apis
         arch: x86_64
-        profile: Pixel_6
-        # Increased memory for the emulator process to align with your high-RAM preference
+        # Using 'pixel' (generic) to avoid "device not found" errors
+        profile: pixel
+        force-avd-creation: true
         emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -memory 2048
         script: |
           # 1. Run instrumented tests for the composeApp module
@@ -44,7 +53,6 @@ jobs:
       with:
         name: test-artifacts
         path: |
-          # Path updated to match your composeApp module
           composeApp/build/reports/androidTests/connected/
           screen.png
           
