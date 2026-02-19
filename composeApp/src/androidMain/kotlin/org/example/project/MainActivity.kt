@@ -24,114 +24,15 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MaterialTheme {
-                MainScreen()
-            }
-        }
-    }
-}
+                Row{
 
-// Simple route tracking
-sealed class Screen(val route: String, val title: String) {
-    object Device : Screen("device", "Device")
-    object Memory : Screen("memory", "Memory")
-}
-
-@Composable
-fun MainScreen() {
-    var selectedScreen by remember { mutableStateOf<Screen>(Screen.Device) }
-    val items = listOf(Screen.Device, Screen.Memory)
-
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                items.forEach { screen ->
-                    NavigationBarItem(
-                        icon = { 
-                            // Using a simple Text emoji as an icon to avoid library errors
-                            Text(if (screen == Screen.Device) "📱" else "💾") 
-                        },
-                        label = { Text(screen.title) },
-                        selected = selectedScreen == screen,
-                        onClick = { selectedScreen = screen }
-                    )
+                    Text("Nehal")
+                    Button(onClick={}){
+                        Text("Click")
+                    }
                 }
             }
         }
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            when (selectedScreen) {
-                is Screen.Device -> DeviceTab()
-                is Screen.Memory -> MemoryTab()
-            }
-        }
     }
 }
 
-@Composable
-fun DeviceTab() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text(text = "📱 Device Hardware", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        InfoRow("Model", "${Build.MANUFACTURER} ${Build.MODEL}")
-        InfoRow("Android Version", Build.VERSION.RELEASE)
-        InfoRow("SDK Level", Build.VERSION.SDK_INT.toString())
-        InfoRow("Hardware", Build.HARDWARE)
-        InfoRow("Board", Build.BOARD)
-        InfoRow("CPU ABIs", Build.SUPPORTED_ABIS.joinToString(", "))
-    }
-}
-
-@Composable
-fun MemoryTab() {
-    val context = LocalContext.current
-    val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-    val memoryInfo = ActivityManager.MemoryInfo()
-    activityManager.getMemoryInfo(memoryInfo)
-
-    val runtime = Runtime.getRuntime()
-    val maxHeap = runtime.maxMemory() / (1024 * 1024)
-    val allocatedHeap = runtime.totalMemory() / (1024 * 1024)
-    val freeHeap = runtime.freeMemory() / (1024 * 1024)
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text(text = "💾 Memory & Heap", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        InfoRow("Total System RAM", "${memoryInfo.totalMem / (1024 * 1024)} MB")
-        InfoRow("Available RAM", "${memoryInfo.availMem / (1024 * 1024)} MB")
-        
-        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-        
-        InfoRow("JVM Max Heap", "$maxHeap MB")
-        InfoRow("JVM Allocated", "$allocatedHeap MB")
-        InfoRow("JVM Free", "$freeHeap MB")
-        
-        Text(
-            text = "Heap Limit Reference: $maxHeap MB",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 20.dp),
-            color = MaterialTheme.colorScheme.secondary
-        )
-    }
-}
-
-@Composable
-fun InfoRow(label: String, value: String) {
-    Row(modifier = Modifier.padding(vertical = 6.dp)) {
-        Text(text = "$label: ", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-        Text(text = value)
-    }
-}
