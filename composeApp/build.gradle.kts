@@ -19,8 +19,8 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
-            implementation(libs.litert)
-            implementation(libs.litert.gpu)
+            implementation("com.google.ai.edge.litert:litert:1.0.1")
+            implementation("com.google.ai.edge.litert:litert-gpu:1.0.1")
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
