@@ -19,8 +19,9 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
-            implementation("com.google.ai.edge.litert:litert:1.0.1")
-            implementation("com.google.ai.edge.litert:litert-gpu:1.0.1")
+            implementation("org.tensorflow:tensorflow-lite:2.16.1")
+            implementation("org.tensorflow:tensorflow-lite-gpu:2.16.1")
+            implementation("org.tensorflow:tensorflow-lite-gpu-api:2.16.1")
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
