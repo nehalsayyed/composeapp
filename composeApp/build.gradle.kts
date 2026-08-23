@@ -19,9 +19,7 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
-            implementation("org.tensorflow:tensorflow-lite:2.16.1")
-            implementation("org.tensorflow:tensorflow-lite-gpu:2.16.1")
-            implementation("org.tensorflow:tensorflow-lite-gpu-api:2.16.1")
+            
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -32,6 +30,7 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation("androidx.compose.material:material-icons-extended:1.6.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
