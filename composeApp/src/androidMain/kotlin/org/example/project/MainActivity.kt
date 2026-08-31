@@ -1,72 +1,75 @@
 package org.example.project
 
 import android.Manifest
-import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.telecom.Call
-import android.telecom.TelecomManager
+import android.telecom.CallAudioState
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.CallEnd
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MicOff
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.delay
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val granted = permissions.entries.all { it.value }
-        if (!granted) {
-            // Permissions denied handling
-        }
-    }
+    ) { /* Handle granted / denied states */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+        enableEdgeToEdge()
         requestRequiredPermissions()
 
         setContent {
-            MaterialTheme {
-                val callState by CallService.callState.collectAsState()
-                val currentCall by CallService.currentCall.collectAsState()
+            val callState by CallService.callState.collectAsState()
+            val currentCall by CallService.currentCall.collectAsState()
+            val audioState by CallService.audioState.collectAsState()
 
-                val callerDetails = remember(currentCall) {
-                    val handle = currentCall?.details?.handle?.schemeSpecificPart
-                    handle ?: "Unknown Caller"
-                }
-
-                CallerScreen(
-                    callerNumber = callerDetails,
-                    callState = callState,
-                    onAnswer = { CallService.answerCall() },
-                    onDecline = { CallService.rejectCall() }
-                )
+            val callerName = remember(currentCall) {
+                currentCall?.details?.callerDisplayName
+                    ?: currentCall?.details?.handle?.schemeSpecificPart
+                    ?: "Unknown Caller"
             }
+
+            ProfessionalCallerScreen(
+                callerName = callerName,
+                callState = callState,
+                audioState = audioState,
+                onAnswer = { CallService.answerCall() },
+                onDeclineOrEnd = { CallService.rejectOrEndCall() },
+                onToggleMute = { CallService.toggleMute() },
+                onToggleSpeaker = { CallService.toggleSpeaker() }
+            )
         }
     }
 
@@ -78,11 +81,9 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             permissions.add(Manifest.permission.ANSWER_PHONE_CALLS)
         }
-
         val missing = permissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
-
         if (missing.isNotEmpty()) {
             requestPermissionLauncher.launch(missing.toTypedArray())
         }
@@ -90,126 +91,156 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun CallerScreen(
-    callerNumber: String,
+fun ProfessionalCallerScreen(
+    callerName: String,
     callState: Int,
+    audioState: CallAudioState?,
     onAnswer: () -> Unit,
-    onDecline: () -> Unit
+    onDeclineOrEnd: () -> Unit,
+    onToggleMute: () -> Unit,
+    onToggleSpeaker: () -> Unit
 ) {
-    var isMuted by remember { mutableStateOf(false) }
-    var isSpeakerOn by remember { mutableStateOf(false) }
+    var callDurationSeconds by remember { mutableLongStateOf(0L) }
 
-    val statusText = when (callState) {
-        Call.STATE_RINGING -> "INCOMING CALL"
-        Call.STATE_ACTIVE -> "CALL IN PROGRESS"
-        Call.STATE_DIALING -> "CALLING..."
-        Call.STATE_DISCONNECTED -> "CALL ENDED"
-        else -> "CONNECTING..."
+    LaunchedEffect(callState) {
+        if (callState == Call.STATE_ACTIVE) {
+            callDurationSeconds = 0L
+            while (true) {
+                delay(1000L)
+                callDurationSeconds++
+            }
+        } else {
+            callDurationSeconds = 0L
+        }
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = Color(0xFF0F172A)
+    val isRinging = callState == Call.STATE_RINGING
+    val isActive = callState == Call.STATE_ACTIVE
+    val isMuted = audioState?.isMuted ?: false
+    val isSpeakerOn = (audioState?.route == CallAudioState.ROUTE_SPEAKER)
+
+    val backgroundBrush = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF1E293B),
+            Color(0xFF0F172A),
+            Color(0xFF020617)
+        ),
+        radius = 1400f
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(backgroundBrush)
+            .windowInsetsPadding(WindowInsets.systemBars)
+            .padding(horizontal = 24.dp, vertical = 20.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 60.dp),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // Top Section: Status & Caller Metadata
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(top = 32.dp)
+            ) {
+                CallStatusBadge(callState = callState, durationSeconds = callDurationSeconds)
+
+                Spacer(modifier = Modifier.height(36.dp))
+
+                PulsingAvatar(
+                    letter = callerName.firstOrNull()?.toString() ?: "?",
+                    isPulsing = isRinging
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
                 Text(
-                    text = statusText,
+                    text = callerName,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    letterSpacing = (-0.5).sp
+                )
+
+                Text(
+                    text = "Mobile Audio Call",
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF94A3B8),
-                    letterSpacing = 2.sp
+                    color = Color(0xFF64748B),
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(top = 4.dp)
                 )
+            }
 
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Box(
+            // Middle Section: In-Call Quick Action Deck
+            AnimatedVisibility(
+                visible = isActive,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(28.dp),
+                    color = Color(0x1AFFFFFF),
                     modifier = Modifier
-                        .size(110.dp)
-                        .background(Color(0xFF1E293B), shape = CircleShape),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
+                        .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(28.dp))
                 ) {
-                    Text(
-                        text = if (callerNumber.isNotEmpty()) callerNumber.first().toString() else "?",
-                        fontSize = 36.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Text(
-                    text = callerNumber,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-
-            // Mute / Speaker Controls (Active during call)
-            AnimatedVisibility(visible = callState == Call.STATE_ACTIVE) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(32.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CallOptionButton(
-                        icon = if (isMuted) Icons.Default.MicOff else Icons.Default.Mic,
-                        label = if (isMuted) "Unmute" else "Mute",
-                        isActive = isMuted,
-                        onClick = {
-                            isMuted = !isMuted
-                            CallService.setMute(isMuted, null)
-                        }
-                    )
-                    CallOptionButton(
-                        icon = Icons.Default.VolumeUp,
-                        label = "Speaker",
-                        isActive = isSpeakerOn,
-                        onClick = {
-                            isSpeakerOn = !isSpeakerOn
-                            CallService.setSpeaker(isSpeakerOn, null)
-                        }
-                    )
+                    Row(
+                        modifier = Modifier.padding(vertical = 16.dp, horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        InCallIconButton(
+                            icon = if (isMuted) Icons.Rounded.MicOff else Icons.Rounded.Mic,
+                            label = if (isMuted) "Unmute" else "Mute",
+                            isActive = isMuted,
+                            onClick = onToggleMute
+                        )
+                        InCallIconButton(
+                            icon = Icons.Rounded.VolumeUp,
+                            label = "Speaker",
+                            isActive = isSpeakerOn,
+                            onClick = onToggleSpeaker
+                        )
+                        InCallIconButton(
+                            icon = Icons.Rounded.Dialpad,
+                            label = "Keypad",
+                            isActive = false,
+                            onClick = { /* Handle Keypad */ }
+                        )
+                    }
                 }
             }
 
-            // Answer & Decline Buttons
+            // Bottom Section: Answer / Hang Up Triggers
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 24.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
+                horizontalArrangement = if (isRinging) Arrangement.SpaceEvenly else Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (callState == Call.STATE_RINGING) {
-                    ActionButton(
-                        icon = Icons.Default.CallEnd,
-                        backgroundColor = Color(0xFFEF4444),
-                        onClick = onDecline
+                if (isRinging) {
+                    HeroActionButton(
+                        icon = Icons.Filled.CallEnd,
+                        label = "Decline",
+                        backgroundColor = Color(0xFFDC2626),
+                        onClick = onDeclineOrEnd
                     )
-                    ActionButton(
-                        icon = Icons.Default.Call,
-                        backgroundColor = Color(0xFF22C55E),
+                    HeroActionButton(
+                        icon = Icons.Filled.Call,
+                        label = "Accept",
+                        backgroundColor = Color(0xFF16A34A),
                         onClick = onAnswer
                     )
-                } else if (callState == Call.STATE_ACTIVE || callState == Call.STATE_DIALING) {
-                    ActionButton(
-                        icon = Icons.Default.CallEnd,
-                        backgroundColor = Color(0xFFEF4444),
-                        onClick = onDecline
-                    )
                 } else {
-                    Text(
-                        text = "No active call",
-                        color = Color(0xFF64748B),
-                        fontSize = 14.sp
+                    HeroActionButton(
+                        icon = Icons.Filled.CallEnd,
+                        label = "End Call",
+                        backgroundColor = Color(0xFFDC2626),
+                        onClick = onDeclineOrEnd
                     )
                 }
             }
@@ -218,52 +249,165 @@ fun CallerScreen(
 }
 
 @Composable
-fun ActionButton(
-    icon: ImageVector,
-    backgroundColor: Color,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(72.dp)
-            .clip(CircleShape)
-            .background(backgroundColor)
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
+fun CallStatusBadge(callState: Int, durationSeconds: Long) {
+    val text = when (callState) {
+        Call.STATE_RINGING -> "INCOMING CALL"
+        Call.STATE_DIALING -> "CALLING..."
+        Call.STATE_ACTIVE -> {
+            val mins = durationSeconds / 60
+            val secs = durationSeconds % 60
+            String.format(Locale.getDefault(), "%02d:%02d", mins, secs)
+        }
+        Call.STATE_DISCONNECTED -> "CALL ENDED"
+        else -> "CONNECTING"
+    }
+
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = Color(0x1FFFFFFF),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x1AFFFFFF))
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(32.dp)
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (callState == Call.STATE_ACTIVE) Color(0xFF4ADE80) else Color(0xFF94A3B8),
+            letterSpacing = if (callState == Call.STATE_ACTIVE) 0.5.sp else 2.sp,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
         )
     }
 }
 
 @Composable
-fun CallOptionButton(
+fun PulsingAvatar(letter: String, isPulsing: Boolean) {
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (isPulsing) 1.22f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+
+    Box(contentAlignment = Alignment.Center) {
+        if (isPulsing) {
+            Box(
+                modifier = Modifier
+                    .size(130.dp)
+                    .scale(pulseScale)
+                    .clip(CircleShape)
+                    .background(Color(0x1A22C55E))
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(116.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(Color(0xFF334155), Color(0xFF1E293B))
+                    )
+                )
+                .border(2.dp, Color(0x33FFFFFF), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = letter.uppercase(),
+                fontSize = 42.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+fun InCallIconButton(
     icon: ImageVector,
     label: String,
     isActive: Boolean,
     onClick: () -> Unit
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (isPressed) 0.92f else 1f, label = "buttonPress")
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.scale(scale)
+    ) {
         Box(
             modifier = Modifier
-                .size(60.dp)
+                .size(56.dp)
                 .clip(CircleShape)
-                .background(if (isActive) Color.White else Color(0xFF1E293B))
-                .clickable { onClick() },
+                .background(if (isActive) Color.White else Color(0x1FFFFFFF))
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = if (isActive) Color.Black else Color.White,
+                tint = if (isActive) Color(0xFF0F172A) else Color.White,
                 modifier = Modifier.size(24.dp)
             )
         }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = if (isActive) Color.White else Color(0xFF94A3B8)
+        )
+    }
+}
+
+@Composable
+fun HeroActionButton(
+    icon: ImageVector,
+    label: String,
+    backgroundColor: Color,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (isPressed) 0.90f else 1f, label = "heroPress")
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.scale(scale)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(76.dp)
+                .clip(CircleShape)
+                .background(backgroundColor)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = Color.White,
+                modifier = Modifier.size(34.dp)
+            )
+        }
         Spacer(modifier = Modifier.height(8.dp))
-        Text(text = label, fontSize = 12.sp, color = Color(0xFF94A3B8))
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFF94A3B8)
+        )
     }
 }
