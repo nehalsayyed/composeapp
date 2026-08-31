@@ -719,7 +719,7 @@ fun InCallOverlay(
                                 onClick = onToggleHold
                             )
                             InCallControl(
-                                icon = Icons.Rounded.AddCall,
+                                icon = Icons.Rounded.PersonAdd,
                                 label = "Add call",
                                 active = false,
                                 onClick = { /* Support multi-party calls */ }
